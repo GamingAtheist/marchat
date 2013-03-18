@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 )
 
 const KeySize = 16
@@ -125,5 +126,16 @@ func Decrypt(key []byte, ct []byte) (msg []byte, err error) {
 	cbc := cipher.NewCBCDecrypter(c, iv)
 	cbc.CryptBlocks(msg, msg)
 	msg, err = UnpadBuffer(msg)
+	return
+}
+
+// Read a key from a file
+func ReadKeyFromFile(filename string) (key []byte, err error) {
+	key, err = ioutil.ReadFile(filename)
+	if err != nil {
+		return
+	} else if len(key) != KeySize {
+		err = ErrBadKey
+	}
 	return
 }
