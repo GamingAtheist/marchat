@@ -25,7 +25,6 @@ var rootTemplate = template.Must(template.New("root").Parse(`
         var mlist;
         function printMessages(ml) {
                 mlst = JSON.parse(ml.data)
-                console.log(ml.length, 'messages received.')
                 if (mlst.length === 0)
                         return;
                 mlist = mlst;
@@ -42,9 +41,7 @@ var rootTemplate = template.Must(template.New("root").Parse(`
         function sendMessage() {
                 var m = input.value;
                 input.value = "";
-                console.log('transmitter sending');
                 transmitter.send(m + '\n');
-                console.log('transmitter sent');
         };
         
         function checkMessages() {

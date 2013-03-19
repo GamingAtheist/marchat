@@ -40,7 +40,6 @@ func transmitterHandler(ws *websocket.Conn) {
 			log.Println("error reading from websocket: ", err.Error())
 			continue
 		}
-		fmt.Println("incoming message")
 		Incoming <- msg
 	}
 }
@@ -90,6 +89,7 @@ func main() {
 func networkChat() {
 	gaddr, ifi := selectInterface()
 	log.Println("listening on ", ifi.Name)
+        log.Println("using multicast address ", gaddr.String())
 	go transmit(gaddr)
 	go receive(gaddr, ifi)
 }
