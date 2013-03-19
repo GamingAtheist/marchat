@@ -34,7 +34,7 @@ func selectInterface() (*net.UDPAddr, *net.Interface) {
 		}
 		for _, addr := range addrList {
 			ip := parseAddr(addr.String())
-			if !ip.IsLoopback() {
+			if !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
 				netInterface = &ifi
 				break
 			}

@@ -89,6 +89,7 @@ func main() {
 
 func networkChat() {
 	gaddr, ifi := selectInterface()
+        log.Println("listening on ", ifi.Name)
 	go transmit(gaddr)
 	go receive(gaddr, ifi)
 }
