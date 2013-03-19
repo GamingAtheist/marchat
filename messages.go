@@ -26,12 +26,12 @@ func DecodeMessage(msg []byte) (msgStr string, err error) {
 		if err == nil {
 			M.Text = tmp
 		}
-                M.Text = fmt.Sprintf("[encrypted] %s", string(M.Text))
+                M.Text = []byte(fmt.Sprintf("[encrypted] %s", string(M.Text)))
 	}
 
 
 	msgStr = fmt.Sprintf("<%s> %s: %s\n", time.Now().Format(DateFormat),
-		M.Sender, M.Text)
+		M.Sender, string(M.Text))
 	return
 }
 
