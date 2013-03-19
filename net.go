@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+        "regexp"
 )
+
+var loopback = regexp.MustCompile("^lo")
 
 func parseAddr(addr string) *net.IP {
 	ipAddr, _, err := net.ParseCIDR(addr)
@@ -26,6 +29,9 @@ func selectInterface() (*net.UDPAddr, *net.Interface) {
 	}
 
 	for _, ifi := range interfaceList {
+                if loopback.MatchString(ifi.Name) {
+                        continue
+                }
 		addrList, err := ifi.Addrs()
 		if err != nil {
 			fmt.Println("[!] couldn't load interface list: ",
@@ -34,7 +40,7 @@ func selectInterface() (*net.UDPAddr, *net.Interface) {
 		}
 		for _, addr := range addrList {
 			ip := parseAddr(addr.String())
-			if !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+			if !ip.IsLoopback() {
 				netInterface = &ifi
 				break
 			}
