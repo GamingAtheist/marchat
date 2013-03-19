@@ -97,7 +97,6 @@ func networkChat() {
 func transmit(gaddr *net.UDPAddr) {
 	for {
 		msg, ok := <-Incoming
-		log.Println("have a message to send")
 		if !ok {
 			log.Println("transmit channel closed")
 			return
@@ -121,7 +120,6 @@ func transmit(gaddr *net.UDPAddr) {
 			log.Printf("warning: short message sent (%d / %d bytes)",
 				n, len(broadcast))
 		}
-		log.Println("message sent")
 	}
 }
 
@@ -133,14 +131,13 @@ func receive(gaddr *net.UDPAddr, ifi *net.Interface) {
 				err.Error())
 		}
 		msg := make([]byte, maxMsg)
-		n, addr, err := uc.ReadFrom(msg)
+		n, _, err := uc.ReadFrom(msg)
 		if err != nil {
 			log.Println("error reading incoming message: ", err.Error())
 			continue
 		} else if n == 0 {
 			continue
 		}
-		log.Printf("message from: %s", addr.String())
 		out, err := DecodeMessage(msg[:n])
 		if err != nil {
 			log.Println("failed to decode message: ", err.Error())

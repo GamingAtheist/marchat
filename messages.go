@@ -27,7 +27,7 @@ func DecodeMessage(msg []byte) (msgStr string, err error) {
 			if err == nil {
 				M.Text = tmp
 			}
-                        err = nil
+			err = nil
 		}
 		M.Text = []byte(fmt.Sprintf("[encrypted] %s", string(M.Text)))
 	}
