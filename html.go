@@ -28,8 +28,13 @@ var rootTemplate = template.Must(template.New("root").Parse(`
                 if (mlst.length === 0)
                         return;
                 mlist = mlst;
-                for (var i = 0; i < mlst.length; i++)
-                        output.innerHTML = '<p>' + atob(mlst[i]) + '</p>' + output.innerHTML;
+
+                for (var i = 0; i < mlst.length; i++) {
+			var p = document.createElement('p');
+			p.innerText = atob(mlst[i]);
+			output.appendChild(p);
+		}
+		output.scrollTop = 1000000
         };
         
         function onKey(e) {
@@ -95,6 +100,9 @@ var rootTemplate = template.Must(template.New("root").Parse(`
         .container .credit {
             margin: 20px 0;
         }
+	#messages { height: 300px; overflow: auto; width: 800px; border: 1px solid #eee; font: 13px Helvetica, Arial; }
+	#messages p { padding: 8px; margin: 0; }
+	#messages p:nth-child(odd) { background: #F6F6F6; }
     </style>
   </head>
 
