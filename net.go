@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-        "regexp"
+	"regexp"
 )
 
 var loopback = regexp.MustCompile("^lo")
@@ -29,9 +29,9 @@ func selectInterface() (*net.UDPAddr, *net.Interface) {
 	}
 
 	for _, ifi := range interfaceList {
-                if loopback.MatchString(ifi.Name) {
-                        continue
-                }
+		if loopback.MatchString(ifi.Name) {
+			continue
+		}
 		addrList, err := ifi.Addrs()
 		if err != nil {
 			fmt.Println("[!] couldn't load interface list: ",
