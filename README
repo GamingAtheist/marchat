@@ -22,9 +22,9 @@ Two AES keys have already been generated for demonstration purposes.
 
 Demo scenario:
 
-2 users using 'demo.key'.
-1 user with 'wrong.key'.
-1 user with no encryption.
+2 users using 'demo.key'. (marchat -u my_name -k demo.key)
+1 user with 'wrong.key'. (marchat -u my_name -k wrong.key)
+1 user with no encryption. (marchat -u my_name)
 
 
 Usage:
