@@ -20,18 +20,18 @@ func DecodeMessage(msg []byte) (msgStr string, err error) {
 		return
 	}
 
-	if M.Encryption {
+	if M.Encryption && len(config.Key) > 0 {
 		var tmp []byte
 		tmp, err = Decrypt(config.Key, M.Text)
 		if err == nil {
 			M.Text = tmp
-		} else {
-			return
 		}
+                M.Text = fmt.Sprintf("[encrypted] %s", string(M.Text))
 	}
 
+
 	msgStr = fmt.Sprintf("<%s> %s: %s\n", time.Now().Format(DateFormat),
-		M.Sender, string(M.Text))
+		M.Sender, M.Text)
 	return
 }
 
