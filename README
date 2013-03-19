@@ -38,3 +38,15 @@ specified in the options (or 4000 if you didn't). For example,
 Notes:
 
 marchat uses UDP multicast for chatting; messages may be lost on the wire.
+
+
+Credits:
+
+The HTML UI uses Twitter's Bootstrap for styling. Twitter's Bootstrap is
+licensed under the Apache 2.0 license. See
+https://github.com/twitter/bootstrap/blob/master/LICENSE
+
+This project was inspired by, and borrows elements from, Andrew Gerrand's
+"Go: code that grows with grace" (http://talks.golang.org/2012/chat.slide#1).
+
+Aaron Bieber (https://github.com/qbit) contributed some improvements.
