@@ -1,14 +1,21 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+)
+
+const (
+	chatPort = 4001
+	msgBuf   = 16
+	maxMsg   = 1024
 )
 
 var config struct {
@@ -18,19 +25,34 @@ var config struct {
 }
 
 var (
-	Incoming = make(chan []byte, 0)
-	Outgoing = make(chan []byte, 0)
+	Incoming = make(chan []byte, msgBuf)
+	Outgoing = make(chan []byte, msgBuf)
 )
 
-const chatPort = 4001
-
-func transmitterHandler(ws *websocket.Conn) { ws.Close() }
+func transmitterHandler(ws *websocket.Conn) {
+	buf := bufio.NewReader(ws)
+	for {
+		msg, err := buf.ReadBytes('\n')
+		if err == io.EOF {
+			log.Println("lost socket")
+			return
+		} else if err != nil {
+			log.Println("error reading from websocket: ", err.Error())
+			continue
+		}
+		fmt.Println("incoming message")
+		Incoming <- msg
+	}
+}
 
 func receiverHandler(ws *websocket.Conn) {
 	messages := make([][]byte, 0)
 	msgCount := len(Outgoing)
+	if msgCount == 0 {
+		return
+	}
 	for i := 0; i < msgCount; i++ {
-		messages = append(messages, <-Incoming)
+		messages = append(messages, <-Outgoing)
 	}
 
 	wire, err := json.Marshal(messages)
@@ -38,12 +60,6 @@ func receiverHandler(ws *websocket.Conn) {
 		ws.Close()
 	}
 	ws.Write(wire)
-}
-
-func renameHandler(ws *websocket.Conn) {
-	buf := new(bytes.Buffer)
-	io.Copy(buf, ws)
-	config.User = string(buf.Bytes())
 }
 
 func main() {
@@ -64,16 +80,72 @@ func main() {
 		}
 	}
 
+	go networkChat()
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/socket", websocket.Handler(transmitterHandler))
 	http.Handle("/incoming", websocket.Handler(receiverHandler))
-	http.Handle("/name", websocket.Handler(renameHandler))
 	log.Fatal(http.ListenAndServe(":"+config.Port, nil))
 }
 
 func networkChat() {
-	gaddr := selectInterface()
+	gaddr, ifi := selectInterface()
+	go transmit(gaddr)
+	go receive(gaddr, ifi)
 }
 
-func transmit() {
+func transmit(gaddr *net.UDPAddr) {
+	for {
+		msg, ok := <-Incoming
+		log.Println("have a message to send")
+		if !ok {
+			log.Println("transmit channel closed")
+			return
+		}
+		broadcast, err := EncodeMessage(msg)
+		if err != nil {
+			log.Println("failed to encode message: ", err.Error())
+			continue
+		}
+		uc, err := net.DialUDP("udp", nil, gaddr)
+		if err != nil {
+			log.Println("failed to dial multicast: ", err.Error())
+			continue
+		}
+		var n int
+		n, err = uc.Write(broadcast)
+		if err != nil {
+			log.Println("failed to send message: ", err.Error())
+			continue
+		} else if n != len(broadcast) {
+			log.Printf("warning: short message sent (%d / %d bytes)",
+				n, len(broadcast))
+		}
+		log.Println("message sent")
+	}
+}
+
+func receive(gaddr *net.UDPAddr, ifi *net.Interface) {
+	for {
+		uc, err := net.ListenMulticastUDP("udp", ifi, gaddr)
+		if err != nil {
+			log.Fatal("failed to set up multicast listener: ",
+				err.Error())
+		}
+		msg := make([]byte, maxMsg)
+		n, addr, err := uc.ReadFrom(msg)
+		if err != nil {
+			log.Println("error reading incoming message: ", err.Error())
+			continue
+		} else if n == 0 {
+			continue
+		}
+		log.Printf("message from: %s", addr.String())
+		out, err := DecodeMessage(msg[:n])
+		if err != nil {
+			log.Println("failed to decode message: ", err.Error())
+			log.Println("msg: %s\n\t%+v", string(msg), msg)
+			continue
+		}
+		Outgoing <- []byte(out)
+	}
 }

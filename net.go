@@ -17,8 +17,8 @@ func parseAddr(addr string) *net.IP {
 	return &ipAddr
 }
 
-func selectInterface() *net.UDPAddr {
-	var NetInterface *net.Interface
+func selectInterface() (*net.UDPAddr, *net.Interface) {
+	var netInterface *net.Interface
 	interfaceList, err := net.Interfaces()
 	if err != nil {
 		fmt.Println("[!] couldn't load interface list: ", err.Error())
@@ -35,16 +35,16 @@ func selectInterface() *net.UDPAddr {
 		for _, addr := range addrList {
 			ip := parseAddr(addr.String())
 			if !ip.IsLoopback() {
-				NetInterface = &ifi
+				netInterface = &ifi
 				break
 			}
 		}
-		if NetInterface != nil {
+		if netInterface != nil {
 			break
 		}
 	}
 
-	if NetInterface == nil {
+	if netInterface == nil {
 		fmt.Println("[!] couldn't find a valid interface")
 		os.Exit(1)
 	}
@@ -57,5 +57,5 @@ func selectInterface() *net.UDPAddr {
 		os.Exit(1)
 	}
 
-	return gaddr
+	return gaddr, netInterface
 }

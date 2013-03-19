@@ -22,11 +22,15 @@ var rootTemplate = template.Must(template.New("root").Parse(`
     <script>
         var transmitter, receiver, input, output;
         
+        var mlist;
         function printMessages(ml) {
-                if (ml.length === 0)
+                mlst = JSON.parse(ml.data)
+                console.log(ml.length, 'messages received.')
+                if (mlst.length === 0)
                         return;
-                for (var i = 0; i < ml.length; i++)
-                        output.innerHTML = '<p>' + ml[i] + '</p>' + output.innerHTML;
+                mlist = mlst;
+                for (var i = 0; i < mlst.length; i++)
+                        output.innerHTML = '<p>' + atob(mlst[i]) + '</p>' + output.innerHTML;
         };
         
         function onKey(e) {
@@ -38,14 +42,15 @@ var rootTemplate = template.Must(template.New("root").Parse(`
         function sendMessage() {
                 var m = input.value;
                 input.value = "";
+                console.log('transmitter sending');
                 transmitter.send(m + '\n');
+                console.log('transmitter sent');
         };
         
         function checkMessages() {
-                console.log('checking for messages');
+                // server handles connection shutdown
                 var receiver = new WebSocket('ws://127.0.0.1:{{.Port}}/incoming')
-                receiver.onmessage = printMessages
-                setTimeout(receiver.close, 100);
+                receiver.onmessage = printMessages;
         }
         
         function init() {
@@ -54,7 +59,7 @@ var rootTemplate = template.Must(template.New("root").Parse(`
         
         	input = document.getElementById("input");
         	input.addEventListener("keyup", onKey, false);
-                check = setInterval(checkMessages, 250);
+                check = setInterval(checkMessages, 1000);
         
         };
         window.addEventListener("load", init, false);
