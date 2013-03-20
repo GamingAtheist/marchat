@@ -11,6 +11,7 @@ type Message struct {
 	Sender     string
 	Text       []byte
 	Encryption bool
+	Control    bool
 }
 
 func DecodeMessage(msg []byte) (msgStr string, err error) {
@@ -21,26 +22,38 @@ func DecodeMessage(msg []byte) (msgStr string, err error) {
 	}
 
 	if M.Encryption {
-		if len(config.Key) > 0 {
+		if !M.Control && len(config.Key) > 0 {
 			var tmp []byte
 			tmp, err = Decrypt(config.Key, M.Text)
 			if err == nil {
 				M.Text = tmp
+			} else {
+				M.Text = []byte(ShowError("[decryption error]"))
 			}
 			err = nil
+		} else if !M.Control {
+			M.Text = []byte(ShowError("[no secret key]"))
 		}
-		M.Text = []byte(fmt.Sprintf("[encrypted] %s", string(M.Text)))
+
+		M.Text = []byte(fmt.Sprintf("%s %s", ShowSuccess("[encrypted]"),
+			string(M.Text)))
 	}
 
-	msgStr = fmt.Sprintf("<%s> %s: %s\n", time.Now().Format(DateFormat),
-		M.Sender, string(M.Text))
+	if !M.Control {
+		msgStr = fmt.Sprintf("<%s> %s: %s\n", time.Now().Format(DateFormat),
+			M.Sender, string(M.Text))
+	} else {
+		msgStr = fmt.Sprintf("<%s> %s %s\n", time.Now().Format(DateFormat),
+			M.Sender, string(M.Text))
+		msgStr = ShowControl(msgStr)
+	}
 	return
 }
 
-func EncodeMessage(msg []byte) (wire []byte, err error) {
+func EncodeMessage(msg []byte, control bool) (wire []byte, err error) {
 	msg = bytes.TrimSpace(msg)
 	M := new(Message)
-	if len(config.Key) != 0 {
+	if !control && len(config.Key) != 0 {
 		msg, err = Encrypt(config.Key, msg)
 		if err != nil {
 			return
@@ -49,6 +62,7 @@ func EncodeMessage(msg []byte) (wire []byte, err error) {
 	}
 	M.Sender = config.User
 	M.Text = msg
+	M.Control = control
 	wire, err = json.Marshal(&M)
 	return
 }

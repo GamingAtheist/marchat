@@ -1,8 +1,11 @@
 package main
 
-import "log"
-import "html/template"
-import "net/http"
+import (
+	"fmt"
+	"html/template"
+	"log"
+	"net/http"
+)
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	err := rootTemplate.Execute(w, config)
@@ -31,7 +34,7 @@ var rootTemplate = template.Must(template.New("root").Parse(`
 
                 for (var i = 0; i < mlst.length; i++) {
 			var p = document.createElement('p');
-			p.innerText = atob(mlst[i]);
+			p.innerHTML = atob(mlst[i]);
 			output.appendChild(p);
 		}
 		output.scrollTop = 1000000
@@ -125,3 +128,15 @@ var rootTemplate = template.Must(template.New("root").Parse(`
   </body>
 </html>
 `))
+
+func ShowError(msg string) string {
+	return fmt.Sprintf(`<span style="color:red">%s</span>`, msg)
+}
+
+func ShowSuccess(msg string) string {
+	return fmt.Sprintf(`<span style="color:green">%s</span>`, msg)
+}
+
+func ShowControl(msg string) string {
+	return fmt.Sprintf(`<em>%s</em>`, msg)
+}

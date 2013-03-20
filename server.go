@@ -25,7 +25,7 @@ var config struct {
 }
 
 var (
-	Incoming = make(chan []byte, msgBuf)
+	Incoming = make(chan Transmit, msgBuf)
 	Outgoing = make(chan []byte, msgBuf)
 )
 
@@ -36,19 +36,27 @@ var (
 		210, 59, 144, 222, 51, 23, 167, 207}
 )
 
+type Transmit struct {
+	Data    []byte
+	Control bool
+}
+
 func transmitterHandler(ws *websocket.Conn) {
+	Incoming <- Transmit{[]byte("is online"), true}
 	buf := bufio.NewReader(ws)
 	for {
 		msg, err := buf.ReadBytes('\n')
 		if err == io.EOF {
 			log.Println("lost socket")
-			return
+			break
 		} else if err != nil {
 			log.Println("error reading from websocket: ", err.Error())
 			continue
 		}
-		Incoming <- msg
+		Incoming <- Transmit{msg, false}
 	}
+	Incoming <- Transmit{[]byte("is offline"), true}
+
 }
 
 func receiverHandler(ws *websocket.Conn) {
@@ -98,7 +106,6 @@ func main() {
 		}
 	}
 
-	fmt.Printf("[+] key: %+v\n", config.Key)
 	go networkChat()
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/socket", websocket.Handler(transmitterHandler))
@@ -121,7 +128,7 @@ func transmit(gaddr *net.UDPAddr) {
 			log.Println("transmit channel closed")
 			return
 		}
-		broadcast, err := EncodeMessage(msg)
+		broadcast, err := EncodeMessage(msg.Data, msg.Control)
 		if err != nil {
 			log.Println("failed to encode message: ", err.Error())
 			continue
