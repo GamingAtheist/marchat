@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"flag"
@@ -10,12 +11,16 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"regexp"
+	"time"
 )
 
 const (
-	chatPort = 4001
-	msgBuf   = 16
-	maxMsg   = 1024
+	chatPort   = 4001
+	msgBuf     = 16
+	maxMsg     = 1024
+	DateFormat = "2006-02-01 15:04:05"
 )
 
 var config struct {
@@ -35,6 +40,13 @@ var (
 	wrongKey = []byte{87, 118, 149, 98, 3, 56, 19, 234,
 		210, 59, 144, 222, 51, 23, 167, 207}
 )
+
+type Message struct {
+	Sender     string
+	Text       []byte
+	Encryption bool
+	Control    bool
+}
 
 type Transmit struct {
 	Data    []byte
@@ -173,4 +185,116 @@ func receive(gaddr *net.UDPAddr, ifi *net.Interface) {
 		}
 		Outgoing <- []byte(out)
 	}
+}
+
+func parseAddr(addr string) *net.IP {
+	ipAddr, _, err := net.ParseCIDR(addr)
+	if err != nil {
+		ipAddr = net.ParseIP(addr)
+	}
+	if ipAddr == nil {
+		return nil
+	}
+	return &ipAddr
+}
+
+func selectInterface() (*net.UDPAddr, *net.Interface) {
+	var netInterface *net.Interface
+	var loopback = regexp.MustCompile("^lo")
+
+	interfaceList, err := net.Interfaces()
+	if err != nil {
+		fmt.Println("[!] couldn't load interface list: ", err.Error())
+		os.Exit(1)
+	}
+
+	for _, ifi := range interfaceList {
+		if loopback.MatchString(ifi.Name) {
+			continue
+		}
+		addrList, err := ifi.Addrs()
+		if err != nil {
+			fmt.Println("[!] couldn't load interface list: ",
+				err.Error())
+			os.Exit(1)
+		}
+		for _, addr := range addrList {
+			ip := parseAddr(addr.String())
+			if !ip.IsLoopback() {
+				netInterface = &ifi
+				break
+			}
+		}
+		if netInterface != nil {
+			break
+		}
+	}
+
+	if netInterface == nil {
+		fmt.Println("[!] couldn't find a valid interface")
+		os.Exit(1)
+	}
+
+	chatSvc := fmt.Sprintf("239.255.255.250:%d", chatPort)
+	gaddr, err := net.ResolveUDPAddr("udp", chatSvc)
+
+	if err != nil {
+		fmt.Println("[!] couldn't resolve multicast address: ", err.Error())
+		os.Exit(1)
+	}
+
+	return gaddr, netInterface
+}
+
+func DecodeMessage(msg []byte) (msgStr string, err error) {
+	M := new(Message)
+	err = json.Unmarshal(msg, &M)
+	if err != nil {
+		return
+	}
+
+	if M.Encryption {
+		if !M.Control && len(config.Key) > 0 {
+			var tmp []byte
+			tmp, err = Decrypt(config.Key, M.Text)
+			if err == nil {
+				M.Text = tmp
+			} else {
+				M.Text = []byte(ShowError("[decryption error]"))
+			}
+			err = nil
+		} else if !M.Control {
+			M.Text = []byte(ShowError("[no secret key]"))
+		}
+
+		M.Text = []byte(fmt.Sprintf("%s %s", ShowSuccess("[encrypted]"),
+			string(M.Text)))
+	}
+
+	if !M.Control {
+		msgStr = fmt.Sprintf("<%s> %s: %s\n", time.Now().Format(DateFormat),
+			M.Sender, string(M.Text))
+	} else {
+		msgStr = fmt.Sprintf("<%s> %s %s\n", time.Now().Format(DateFormat),
+			M.Sender, string(M.Text))
+		msgStr = ShowControl(msgStr)
+	}
+	return
+}
+
+func EncodeMessage(msg []byte, control bool) (wire []byte, err error) {
+	msg = bytes.TrimSpace(msg)
+	M := new(Message)
+	if !control && len(config.Key) != 0 {
+		msg, err = Encrypt(config.Key, msg)
+		if err != nil {
+			return
+		}
+		M.Encryption = true
+	}
+	M.Sender = config.User
+	M.Text = msg
+	M.Control = control
+	wire, err = json.Marshal(&M)
+	return
 }
