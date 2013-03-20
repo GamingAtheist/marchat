@@ -29,6 +29,13 @@ var (
 	Outgoing = make(chan []byte, msgBuf)
 )
 
+var (
+	demoKey = []byte{104, 25, 241, 228, 108, 50, 20, 87,
+		190, 47, 198, 21, 111, 128, 69, 98}
+	wrongKey = []byte{87, 118, 149, 98, 3, 56, 19, 234,
+		210, 59, 144, 222, 51, 23, 167, 207}
+)
+
 func transmitterHandler(ws *websocket.Conn) {
 	buf := bufio.NewReader(ws)
 	for {
@@ -62,7 +69,12 @@ func receiverHandler(ws *websocket.Conn) {
 }
 
 func main() {
+	sampleKeys := make(map[string][]byte, 0)
+	sampleKeys["demo"] = demoKey
+	sampleKeys["wrong"] = wrongKey
+
 	fKeyFile := flag.String("k", "", "key file")
+	fPreloadedKey := flag.String("key", "", "select a preloaded demo key")
 	fPort := flag.Int("p", 4000, "listening port")
 	fUser := flag.String("u", "anonymous", "user to broadcast as")
 	flag.Parse()
@@ -77,8 +89,16 @@ func main() {
 			log.Fatalf("[!] failed to load %s: %s\n", *fKeyFile,
 				err.Error())
 		}
+	} else if *fPreloadedKey != "" {
+		var ok bool
+		config.Key, ok = sampleKeys[*fPreloadedKey]
+		if !ok {
+			log.Fatalf("[!] %s is not a valid preloaded key\n",
+				*fPreloadedKey)
+		}
 	}
 
+	fmt.Printf("[+] key: %+v\n", config.Key)
 	go networkChat()
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/socket", websocket.Handler(transmitterHandler))
@@ -89,7 +109,7 @@ func main() {
 func networkChat() {
 	gaddr, ifi := selectInterface()
 	log.Println("listening on ", ifi.Name)
-        log.Println("using multicast address ", gaddr.String())
+	log.Println("using multicast address ", gaddr.String())
 	go transmit(gaddr)
 	go receive(gaddr, ifi)
 }
