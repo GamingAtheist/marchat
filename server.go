@@ -54,12 +54,13 @@ type Transmit struct {
 }
 
 func transmitterHandler(ws *websocket.Conn) {
+	log.Println("client connected.")
 	Incoming <- Transmit{[]byte("is online"), true}
 	buf := bufio.NewReader(ws)
 	for {
 		msg, err := buf.ReadBytes('\n')
 		if err == io.EOF {
-			log.Println("lost socket")
+			log.Println("client disconnected.")
 			break
 		} else if err != nil {
 			log.Println("error reading from websocket: ", err.Error())
